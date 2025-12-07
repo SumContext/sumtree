@@ -1,0 +1,20 @@
+{
+  "projectConfig": {
+    "maxSupportedFileSize": 40960,
+    "JuniorLLM": "openai/gpt-oss-20b:free",
+    "SeniorLLM": "openai/gpt-oss-20b:free",
+    "supportedFileTypes": [
+      "c",
+      "py",
+      "sh",
+      "clj",
+      "js",
+      "nix",
+      "html",
+      "txt",
+      "md",
+      "cljs"
+    ],
+    "gignore": ".git/\n*.key\n.gitignore"
+  }
+}
