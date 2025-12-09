@@ -24,18 +24,65 @@
 ######################################################################
 
 from datetime import datetime, timezone
+import pathspec
 import subprocess, threading, re, os, sys, inspect, shutil, argparse, random, math, json, fnmatch, requests
 rows, columns = os.popen('stty size', 'r').read().split() #http://goo.gl/cD4CFf
 #"pydoc -p 1234" will start a HTTP server on port 1234, allowing you to browse
 #the documentation at "http://localhost:1234/" in your preferred Web browser.
 cwf = os.path.abspath(inspect.getfile(inspect.currentframe())) # Current Working File
 cwfd = os.path.dirname(cwf) # Current Working File Path
+
 # from openai import OpenAI
 # Read the secret key from the file
-with open("secret.key", "r") as f:
-    secret_k = f.read().strip()
     # client = OpenAI( base_url="https://openrouter.ai/api/v1",
     #     api_key= f.read().strip(), )
+
+# Global variables (initialized to None; set in main())
+treesums = None
+cog_cfg = None
+secret_k = None
+
+def main():
+    global treesums, cog_cfg, secret_k  # Declare to modify globals
+
+    parser = argparse.ArgumentParser(description="Generate JSON tree of a directory.")
+    parser.add_argument("directory", help="Path to the directory")
+    args = parser.parse_args()
+    script_dir = args.directory
+    treesums = os.path.join(script_dir, "tree.sums.json")  # Fixed dir_path -> script_dir
+
+    # Define config directory in home
+    home_cfg_dir = os.path.join(os.path.expanduser("~"), ".config", "sumtree")
+
+    # Prefer ~/.config/sumtree, fallback to script_dir
+    cog_cfg = os.path.join(home_cfg_dir, "cog_cfg.json") \
+        if os.path.exists(os.path.join(home_cfg_dir, "cog_cfg.json")) \
+        else os.path.join(script_dir, "cog_cfg.json")
+    # print(cog_cfg)
+    
+    secretkey = os.path.join(home_cfg_dir, "secret.key") \
+        if os.path.exists(os.path.join(home_cfg_dir, "secret.key")) \
+        else os.path.join(script_dir, "secret.key")
+    # print(secretkey)
+
+    with open(secretkey, "r") as f:
+        secret_k = f.read().strip()
+
+    flist = flistwithsums(ftree2sums(dir2tree_data(script_dir)), args.directory)
+    print(ftree2bashsumtree(script_dir))
+
+    # ftree = dir2tree_data(script_dir)
+    # # print(json.dumps(ftree, indent=2))
+    # flist = ftree2sums(ftree)
+    # # print(ftree2bashtree(ftree))
+    # 
+    # # readm = os.path.join(script_dir, "readme.md")
+    # # print(file2sum(readm))
+    # # file2sum tested working
+    # 
+    # # # enrich with summaries (using cache if available)
+    # flist = flistwithsums(flist, args.directory)
+    # # print(json.dumps(flist, indent=2))
 
 def file2sum(file_path):
     # 1. Validate Input
@@ -110,30 +157,48 @@ def file2sum(file_path):
     except (KeyError, IndexError) as e:
         return f"Error parsing JSON response: {str(e)}", True # <--- CHANGED (Added True)
 
+# def load_ignore_patterns(dir_path: str):
+#     cfg_file = os.path.join(dir_path, "cog_cfg.json")
+#     patterns = []
+#     if os.path.isfile(cfg_file):
+#         try:
+#             with open(cfg_file, "r", encoding="utf-8") as f:
+#                 cfg = json.load(f)
+#             gignore_str = cfg.get("projectConfig", {}).get("gignore", "")
+#             if isinstance(gignore_str, str):
+#                 # split on newlines, strip whitespace
+#                 patterns = [p.strip() for p in gignore_str.splitlines() if p.strip()]
+#         except Exception:
+#             pass
+#     return patterns
+# 
+# def should_ignore(name: str, full_path: str, patterns: list) -> bool:
+#     for pat in patterns:
+#         # directory ignore (like ".git/")
+#         if pat.endswith("/") and name == pat.rstrip("/"):
+#             return True
+#         # glob-style ignore
+#         if fnmatch.fnmatch(name, pat) or fnmatch.fnmatch(full_path, pat):
+#             return True
+#     return False
+
 def load_ignore_patterns(dir_path: str):
     cfg_file = os.path.join(dir_path, "cog_cfg.json")
-    patterns = []
+    patterns = ""
     if os.path.isfile(cfg_file):
         try:
             with open(cfg_file, "r", encoding="utf-8") as f:
                 cfg = json.load(f)
-            gignore_str = cfg.get("projectConfig", {}).get("gignore", "")
-            if isinstance(gignore_str, str):
-                # split on newlines, strip whitespace
-                patterns = [p.strip() for p in gignore_str.splitlines() if p.strip()]
+            patterns = cfg.get("projectConfig", {}).get("gignore", "")
         except Exception:
             pass
-    return patterns
+    # Compile patterns using GitWildMatchPattern (same rules as .gitignore)
+    return pathspec.PathSpec.from_lines(pathspec.patterns.GitWildMatchPattern, patterns.splitlines())
 
-def should_ignore(name: str, full_path: str, patterns: list) -> bool:
-    for pat in patterns:
-        # directory ignore (like ".git/")
-        if pat.endswith("/") and name == pat.rstrip("/"):
-            return True
-        # glob-style ignore
-        if fnmatch.fnmatch(name, pat) or fnmatch.fnmatch(full_path, pat):
-            return True
-    return False
+def should_ignore(name: str, full_path: str, spec) -> bool:
+    # spec.match_file expects a relative path
+    rel_path = os.path.relpath(full_path)
+    return spec.match_file(rel_path)
 
 def dir2tree_data(dir_path: str) -> dict:
     forbidden_pattern = re.compile(r'[<>:"|?*\x00]')
@@ -146,7 +211,8 @@ def dir2tree_data(dir_path: str) -> dict:
             "is_valid_path": is_valid_path,
             "path_exists": os.path.isdir(dir_path)
         }
-    ignore_patterns = load_ignore_patterns(dir_path)
+    ignore_spec = load_ignore_patterns(dir_path)
+
     def build_tree(path: str) -> dict:
         name = os.path.basename(path) or path
         node = {
@@ -158,12 +224,13 @@ def dir2tree_data(dir_path: str) -> dict:
             try:
                 for entry in os.listdir(path):
                     full_path = os.path.join(path, entry)
-                    if should_ignore(entry, full_path, ignore_patterns):
+                    if should_ignore(entry, full_path, ignore_spec):
                         continue
                     node["children"].append(build_tree(full_path))
             except PermissionError:
                 pass
         return node
+
     file_tree = build_tree(dir_path)
     file_tree["is_valid_path"] = True
     file_tree["path_exists"] = True
@@ -314,38 +381,6 @@ def ftree2bashsumtree(dir_path):
             # Start recursion with empty parent_path so os.path.join works correctly
             lines.extend(recurse(child, "", is_last, ""))
     return "\n".join(lines)
-
-# Global variables (initialized to None; set in main())
-treesums = None
-cog_cfg = None
-secretkey = None
-
-def main():
-    global treesums, cog_cfg, secretkey  # Declare to modify globals
-
-    parser = argparse.ArgumentParser(description="Generate JSON tree of a directory.")
-    parser.add_argument("directory", help="Path to the directory")
-    args = parser.parse_args()
-    script_dir = args.directory
-    treesums = os.path.join(script_dir, "tree.sums.json")  # Fixed dir_path -> script_dir
-    cog_cfg = os.path.join(script_dir, "cog_cfg.json")
-    secretkey = os.path.join(script_dir, "secret.key")
-
-    flist = flistwithsums(ftree2sums(dir2tree_data(script_dir)), args.directory)
-    print(ftree2bashsumtree(script_dir))
-
-    # ftree = dir2tree_data(script_dir)
-    # # print(json.dumps(ftree, indent=2))
-    # flist = ftree2sums(ftree)
-    # # print(ftree2bashtree(ftree))
-    # 
-    # # readm = os.path.join(script_dir, "readme.md")
-    # # print(file2sum(readm))
-    # # file2sum tested working
-    # 
-    # # # enrich with summaries (using cache if available)
-    # flist = flistwithsums(flist, args.directory)
-    # # print(json.dumps(flist, indent=2))
 
 if __name__ == "__main__":
     main()

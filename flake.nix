@@ -21,6 +21,7 @@
 #         ps.openai
 #         ps.pydantic
         ps.requests
+        ps.pathspec
       ]);
 
       sumtree = pkgs.writeShellScriptBin "sumtree" ''
