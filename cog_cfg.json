@@ -15,6 +15,6 @@
       "md",
       "cljs"
     ],
-    "gignore": ".git/\n*.key\n.gitignore"
+    "gignore": ".git/\n*.key\n.gitignore\ntree.sums.json"
   }
 }
