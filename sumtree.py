@@ -58,13 +58,12 @@ def main():
     cog_cfg = os.path.join(home_cfg_dir, "cog_cfg.json") \
         if os.path.exists(os.path.join(home_cfg_dir, "cog_cfg.json")) \
         else os.path.join(script_dir, "cog_cfg.json")
-    # print(cog_cfg)
+    print(cog_cfg)
     
     secretkey = os.path.join(home_cfg_dir, "secret.key") \
         if os.path.exists(os.path.join(home_cfg_dir, "secret.key")) \
         else os.path.join(script_dir, "secret.key")
     # print(secretkey)
-
     with open(secretkey, "r") as f:
         secret_k = f.read().strip()
 
@@ -130,7 +129,7 @@ def file2sum(file_path):
           },
           {
             "role": "assistant",
-            "content": "summary:\n\n```C program to calculate and display real or complex roots of a quadratic equation using coefficients.```",
+            "content": "```C program to calculate and display real or complex roots of a quadratic equation using coefficients.```",
             "reasoning": "The user requested a concise summary of a C program. The program reads coefficients of a quadratic equation, computes the determinant, and based on its value, calculates and prints either two real roots, one repeated real root, or two complex roots. The assistant generated a short summary that captures this functionality within the character limit."
           },
             {"role": "user", "content": f"File: {os.path.basename(file_path)}\n\nContent:\n{code_content}\n\n{prompt}"}
@@ -157,42 +156,19 @@ def file2sum(file_path):
     except (KeyError, IndexError) as e:
         return f"Error parsing JSON response: {str(e)}", True # <--- CHANGED (Added True)
 
-# def load_ignore_patterns(dir_path: str):
-#     cfg_file = os.path.join(dir_path, "cog_cfg.json")
-#     patterns = []
-#     if os.path.isfile(cfg_file):
-#         try:
-#             with open(cfg_file, "r", encoding="utf-8") as f:
-#                 cfg = json.load(f)
-#             gignore_str = cfg.get("projectConfig", {}).get("gignore", "")
-#             if isinstance(gignore_str, str):
-#                 # split on newlines, strip whitespace
-#                 patterns = [p.strip() for p in gignore_str.splitlines() if p.strip()]
-#         except Exception:
-#             pass
-#     return patterns
-# 
-# def should_ignore(name: str, full_path: str, patterns: list) -> bool:
-#     for pat in patterns:
-#         # directory ignore (like ".git/")
-#         if pat.endswith("/") and name == pat.rstrip("/"):
-#             return True
-#         # glob-style ignore
-#         if fnmatch.fnmatch(name, pat) or fnmatch.fnmatch(full_path, pat):
-#             return True
-#     return False
-
 def load_ignore_patterns(dir_path: str):
-    cfg_file = os.path.join(dir_path, "cog_cfg.json")
+    global cog_cfg  # <--- CRITICAL FIX: Access the global path resolved in main()
+    
     patterns = ""
-    if os.path.isfile(cfg_file):
+    # Use the global cog_cfg path instead of constructing a new one
+    if cog_cfg and os.path.isfile(cog_cfg):
         try:
-            with open(cfg_file, "r", encoding="utf-8") as f:
+            with open(cog_cfg, "r", encoding="utf-8") as f:
                 cfg = json.load(f)
             patterns = cfg.get("projectConfig", {}).get("gignore", "")
         except Exception:
             pass
-    # Compile patterns using GitWildMatchPattern (same rules as .gitignore)
+    print(f"===patterns===\n{patterns}\n===patterns===")     
     return pathspec.PathSpec.from_lines(pathspec.patterns.GitWildMatchPattern, patterns.splitlines())
 
 def should_ignore(name: str, full_path: str, spec) -> bool:
