@@ -24,7 +24,10 @@
         ps.pathspec
       ]);
 
+      gitRev = self.rev or "dirty";
+
       sumtree = pkgs.writeShellScriptBin "sumtree" ''
+        export SUMTREE_GIT_REV="${gitRev}"
         exec ${myPythonEnv}/bin/python ${self}/sumtree.py "$@"
       '';
     in

@@ -47,7 +47,12 @@ def main():
 
     parser = argparse.ArgumentParser(description="Generate JSON tree of a directory.")
     parser.add_argument("directory", help="Path to the directory")
+    parser.add_argument("-v", "--verbose", action="store_true", help="Print Git revision")
     args = parser.parse_args()
+
+    if args.verbose:
+        print("Git revision:", os.environ.get("SUMTREE_GIT_REV", "unknown"))
+
     script_dir = args.directory
     treesums = os.path.join(script_dir, "tree.sums.json")  # Fixed dir_path -> script_dir
 
