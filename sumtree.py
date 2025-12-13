@@ -58,7 +58,7 @@ def main():
     cog_cfg = os.path.join(home_cfg_dir, "cog_cfg.json") \
         if os.path.exists(os.path.join(home_cfg_dir, "cog_cfg.json")) \
         else os.path.join(script_dir, "cog_cfg.json")
-    print(cog_cfg)
+    # print(cog_cfg)
     
     secretkey = os.path.join(home_cfg_dir, "secret.key") \
         if os.path.exists(os.path.join(home_cfg_dir, "secret.key")) \
@@ -168,7 +168,7 @@ def load_ignore_patterns(dir_path: str):
             patterns = cfg.get("projectConfig", {}).get("gignore", "")
         except Exception:
             pass
-    print(f"===patterns===\n{patterns}\n===patterns===")     
+    # print(f"===patterns===\n{patterns}\n===patterns===")
     return pathspec.PathSpec.from_lines(pathspec.patterns.GitWildMatchPattern, patterns.splitlines())
 
 def should_ignore(name: str, full_path: str, spec) -> bool:

@@ -1,0 +1,44 @@
+[
+  {
+    "name": "./cog_cfg.json",
+    "sum": "Defines project config: max file size, LLM names, supported types, gitignore patterns.",
+    "time": 1765596286,
+    "error": false
+  },
+  {
+    "name": "./sumtree.py",
+    "sum": "Python script: scans directory, builds tree, caches file checksums, creates AI\u2011summaries of each file.",
+    "time": 1765596393,
+    "error": false
+  },
+  {
+    "name": "./issue.md",
+    "sum": "#summary: Nix flake with custom Python env, Vulkan & Qt libs, shell command `sumtree`, and GPU dev tools.",
+    "time": 1765338041,
+    "error": false
+  },
+  {
+    "name": "./readme.md",
+    "sum": "sumtree: tree-like output + LLM summaries writes tree.sums.json gignore filtering notes plans SumIssueSumFile.",
+    "time": 1765338060,
+    "error": false
+  },
+  {
+    "name": "./flake.lock",
+    "sum": "Lock for NixOS nixpkgs at rev d9bc5c7dceb30d8d6fafa10aeb6aa8a48c218454, nar hash sha256-y..., version 7",
+    "time": 1765338069,
+    "error": false
+  },
+  {
+    "name": "./devShells.nix",
+    "sum": "Nix shell: custom Python (PyTorch Vulkan, stable-baselines3, Keras+Pillow) with Vulkan/OpenCL libs and Qt6.",
+    "time": 1765338091,
+    "error": false
+  },
+  {
+    "name": "./flake.nix",
+    "sum": "Flake with Python 3.13 env, requests & pathspec, defines sumtree script, devShell includes env & script.",
+    "time": 1765338100,
+    "error": false
+  }
+]

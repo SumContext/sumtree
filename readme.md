@@ -2,6 +2,26 @@
 sumtree produces output similar to the tree command, but adds file 
 summaries from LLMs next to each filename.
 
+example:
+```
+
+$ sumtree ./
+.
+├── .git
+├── cog_cfg.json
+│ Defines project config: max file size, LLM names, supported types, gitignore patterns.
+├── devShells.nix
+│ Nix shell: custom Python (PyTorch Vulkan, stable-baselines3, Keras+Pillow) with Vulkan/OpenCL libs and Qt6.
+├── flake.nix
+│ Flake with Python 3.13 env, requests & pathspec, defines sumtree script, devShell includes env & script.
+├── issue.md
+│ #summary: Nix flake with custom Python env, Vulkan & Qt libs, shell command `sumtree`, and GPU dev tools.
+├── readme.md
+│ sumtree: tree-like output + LLM summaries writes tree.sums.json gignore filtering notes plans SumIssueSumFile.
+└── sumtree.py
+ Python script: scans directory, builds tree, caches file checksums, creates AI‑summaries of each file.
+
+```
 
 ### Currently works!
 
@@ -15,16 +35,4 @@ gignore json:
     "gignore": ".git/\n*.key"
 ```
 
-## current issues
 
-We're setting up this repository to act as a flake.
-
-
-## Future Functinality
-
-### SumIssueSumFile
-
-`SumIssueSumFile(issue, file, target_dir)`
-list the sumtree output, the issue we are working on, and the entire 
-current file, along with a json yes/no dialog for if the current file 
-is pertinent to our issue; returns true or false
