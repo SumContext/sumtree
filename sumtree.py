@@ -285,17 +285,18 @@ def flistwithsums(flist, dir_path: str):
         use_cached = False
         if fname in cached:
             cached_entry = cached[fname]
-            # MODIFIED: Check if time is valid AND ensure the previous entry was not an error
+            cached_sum = cached_entry.get("sum", "")
+            # We reject the cache if the summary is too short (< 24), 
+            # forcing the script to re-evaluate or re-generate it.
             if (cached_entry.get("time") and
                 cached_entry["time"] >= mtime and
-                not cached_entry.get("error", False)):
-                
-                # cached summary is newer and valid
-                entry["sum"] = cached_entry["sum"]
+                not cached_entry.get("error", False) and
+                len(cached_sum) >= 24):  # <--- NEW CHECK ADDED HERE
+                entry["sum"] = cached_sum
                 entry["time"] = cached_entry["time"]
                 entry["error"] = cached_entry.get("error", False)
                 use_cached = True
-        
+
         if not use_cached:
             summary, is_error = file2sum(full_path)
             # Check if summary is less than 24 chars. 
