@@ -36,3 +36,28 @@ gignore json:
 ```
 
 
+### installing to flake systems add the following 3 lines:
+
+```
+    ## add to inputs
+    SumContext.url = "github:SumContext/sumtree";
+
+    nixosConfigurations.nixos = nixpkgs.lib.nixosSystem { 
+      system = "x86_64-linux";
+      specialArgs = {
+        # Pass unstable pkgs to configuration.nix if needed for system packages
+        locked = nixpkgs-locked.legacyPackages."x86_64-linux";
+        unstable = nixpkgs-unstable.legacyPackages."x86_64-linux";
+        unstablelocked = nixpkgs-unstable-locked.legacyPackages."x86_64-linux";
+
+        ## add this line if your configuration is a flake
+        inherit (inputs) SumContext;
+
+      };
+
+environment.systemPackages = with pkgs; [
+
+    ## add this to your pkgs
+    SumContext.packages.${pkgs.system}.sumtree
+
+```
