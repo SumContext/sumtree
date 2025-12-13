@@ -35,12 +35,16 @@ gignore json:
     "gignore": ".git/\n*.key"
 ```
 
+###
+
+make sure you have a `cog_cfg.json` and `secret.key` in your `~/.config/sumtree/` directory
+
 
 ### installing to flake systems add the following 3 lines:
 
 ```
     ## add to inputs
-    SumContext.url = "github:SumContext/sumtree";
+    SumContext.url = "github:SumContext/sumtree/main";
 
     nixosConfigurations.nixos = nixpkgs.lib.nixosSystem { 
       system = "x86_64-linux";
