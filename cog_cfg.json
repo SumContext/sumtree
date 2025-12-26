@@ -1,8 +1,9 @@
 {
   "projectConfig": {
-    "maxSupportedFileSize": 40960,
-    "JuniorLLM": "openai/gpt-oss-20b:free",
-    "SeniorLLM": "openai/gpt-oss-20b:free",
+    "API_URL": "https://api.groq.com/openai/v1/chat/completions",
+    "maxSupportedFileSize": 20480,
+    "JuniorLLM": "openai/gpt-oss-20b",
+    "SeniorLLM": "openai/gpt-oss-20b",
     "supportedFileTypes": [
       "c",
       "py",
