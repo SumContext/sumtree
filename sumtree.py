@@ -167,7 +167,12 @@ def file2sum(file_path):
 
         if content.startswith("```") and content.endswith("```"):
             lines = content.splitlines()
-            if len(lines) >=
+            if len(lines) >= 2:
+                content = "\n".join(lines[1:-1]).strip()
+
+        return content, False
+    except (KeyError, IndexError) as e:
+        return f"Error parsing JSON response: {str(e)}", True
 
 def load_ignore_patterns(dir_path: str):
     global cog_cfg  # <--- CRITICAL FIX: Access the global path resolved in main()
