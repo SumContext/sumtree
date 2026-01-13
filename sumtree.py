@@ -76,21 +76,30 @@ def main():
     flist = flistwithsums(ftree2sums(dir2tree_data(script_dir)), args.directory)
     print(ftree2bashsumtree(script_dir))
 
+# def Load_Plaintxt(file_path):
+#     if not os.path.exists(file_path):
+#         return None, f"Error: File {file_path} not found.", True
+#     try:
+#         with smart_open.open(file_path, "r", encoding="utf-8") as f:
+#             content = f.read()
+#         return content, None, False
+#     except Exception as e:
+#         return None, f"Error reading file: {str(e)}", True
+
 def get_response(payload_builder, *builder_args):
     """
-    Orchestrates config loading, payload building, and API calls.
-    No awareness of builder_args
+    Orchestrates config loading, and API calls.
+    No awareness of builder_args, delegates to payload_builder
     """
     try:
         # Load Config
         with open(cog_cfg, "r", encoding="utf-8") as f:
             cfg = json.load(f, object_hook=lambda d: types.SimpleNamespace(**d))
-
         if not cfg.projectConfig.JuniorLLM or not cfg.projectConfig.API_URL:
             return "Configuration Error: Missing API_URL or Model name.", True
 
-        # Build payload (builder handles file I/O + validation)
-        payload, err = payload_builder(cfg.projectConfig.JuniorLLM, *builder_args)
+        # Build payload
+        payload, err = payload_builder(cfg, *builder_args)
         if err:
             return payload, True
 
@@ -99,7 +108,6 @@ def get_response(payload_builder, *builder_args):
             "Authorization": f"Bearer {secret_k}",
             "Content-Type": "application/json"
         }
-
         response = requests.post(cfg.projectConfig.API_URL, headers=headers, json=payload, timeout=30)
         response.raise_for_status()
         return response.json(), False
@@ -111,16 +119,6 @@ def get_response(payload_builder, *builder_args):
     except Exception as e:
         return f"Unexpected Error: {str(e)}", True
 
-# def Load_Plaintxt(file_path):
-#     if not os.path.exists(file_path):
-#         return None, f"Error: File {file_path} not found.", True
-#     try:
-#         with smart_open.open(file_path, "r", encoding="utf-8") as f:
-#             content = f.read()
-#         return content, None, False
-#     except Exception as e:
-#         return None, f"Error reading file: {str(e)}", True
-
 def Load_Plaintxt(file_path):
     """Utility to read file content safely."""
     if not os.path.exists(file_path):
@@ -131,25 +129,21 @@ def Load_Plaintxt(file_path):
     except Exception as e:
         return f"Error reading file: {str(e)}", True
 
-def load_sum(model_name, file_path, *builder_args):
-    """
-    Builds the LLM payload.
-    Now responsible for file size validation and loading.
-    Returns (payload, is_error).
-    """
-    # 1. File size validation
+def load_sum(cfg, *builder_args):
+    model_name = cfg.projectConfig.JuniorLLM
+    max_size = cfg.projectConfig.maxSupportedFileSize
+    file_path = builder_args[0]
+
     try:
-        if os.path.getsize(file_path) > 500_000:  # or cfg.projectConfig.maxSupportedFileSize
+        if os.path.getsize(file_path) > max_size:
             return "(skipped: file too large)", True
     except Exception as e:
         return f"File size check failed: {str(e)}", True
 
-    # 2. Load file content
     code_content, err = Load_Plaintxt(file_path)
     if err:
         return code_content, True
 
-    # 3. Extra context
     extra_context = builder_args[0] if builder_args else "large project"
 
     prompt = "Provide a markdown code escaped 111 chars or less summary of this file."
@@ -171,7 +165,10 @@ def load_sum(model_name, file_path, *builder_args):
             "content": "```C program to calculate and display real or complex roots of a quadratic equation using coefficients.```",
             "reasoning": "The user requested a concise summary of a C program. The program reads coefficients of a quadratic equation, computes the determinant, and based on its value, calculates and prints either two real roots, one repeated real root, or two complex roots. The assistant generated a short summary that captures this functionality within the character limit."
           },
-            {"role": "user", "content": f"{prompt}\n```\n{code_content}\n```\n"}
+          {
+            "role": "user",
+            "content": f"{prompt}\n```\n{code_content}\n```\n"
+          }
         ]
     }
     return payload, False

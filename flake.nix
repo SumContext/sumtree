@@ -22,6 +22,7 @@
 #         ps.pydantic
         ps.requests
         ps.pathspec
+        ps.smart-open
       ]);
 
       gitRev = self.rev or "dirty";
