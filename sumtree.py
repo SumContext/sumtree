@@ -97,12 +97,10 @@ def get_response(payload_builder, *builder_args):
             cfg = json.load(f, object_hook=lambda d: types.SimpleNamespace(**d))
         if not cfg.projectConfig.JuniorLLM or not cfg.projectConfig.API_URL:
             return "Configuration Error: Missing API_URL or Model name.", True
-
         # Build payload
         payload, err = payload_builder(cfg, *builder_args)
         if err:
             return payload, True
-
         # API Request
         headers = {
             "Authorization": f"Bearer {secret_k}",
@@ -111,7 +109,6 @@ def get_response(payload_builder, *builder_args):
         response = requests.post(cfg.projectConfig.API_URL, headers=headers, json=payload, timeout=30)
         response.raise_for_status()
         return response.json(), False
-
     except FileNotFoundError:
         return f"Config file {cog_cfg} not found.", True
     except requests.exceptions.RequestException as e:
@@ -119,35 +116,40 @@ def get_response(payload_builder, *builder_args):
     except Exception as e:
         return f"Unexpected Error: {str(e)}", True
 
-def Load_Plaintxt(file_path):
-    """Utility to read file content safely."""
-    if not os.path.exists(file_path):
-        return f"Error: File {file_path} not found.", True
+def get_sum(file_path, *builder_args):
+    data, err = get_response(load_sum, file_path, *builder_args)
+    if err:
+        # data is already an error message string
+        return data, True
+    
+    # Only try to parse JSON if there was no error
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            return f.read(), False
-    except Exception as e:
-        return f"Error reading file: {str(e)}", True
+        message = data['choices'][0]['message']
+        content = message.get('content', '').strip()
+        if content.startswith("```"):
+            lines = content.splitlines()
+            if len(lines) >= 2:
+                content = "\n".join(lines[1:-1]).strip()
+            else:
+                content = content.replace("```", "").strip()
+        return content, False
+    except (KeyError, IndexError, TypeError) as e:
+        return f"Error parsing JSON response: {str(e)}", True
 
 def load_sum(cfg, *builder_args):
     model_name = cfg.projectConfig.JuniorLLM
     max_size = cfg.projectConfig.maxSupportedFileSize
     file_path = builder_args[0]
-
     try:
         if os.path.getsize(file_path) > max_size:
             return "(skipped: file too large)", True
     except Exception as e:
         return f"File size check failed: {str(e)}", True
-
     code_content, err = Load_Plaintxt(file_path)
     if err:
         return code_content, True
-
     extra_context = builder_args[0] if builder_args else "large project"
-
     prompt = "Provide a markdown code escaped 111 chars or less summary of this file."
-
     payload = {
         "model": model_name,
         "include_reasoning": True,
@@ -173,25 +175,15 @@ def load_sum(cfg, *builder_args):
     }
     return payload, False
 
-def get_sum(file_path, *builder_args):
-    data, err = get_response(load_sum, file_path, *builder_args)
-    if err:
-        # data is already an error message string
-        return data, True
-    
-    # Only try to parse JSON if there was no error
+def Load_Plaintxt(file_path):
+    """Utility to read file content safely."""
+    if not os.path.exists(file_path):
+        return f"Error: File {file_path} not found.", True
     try:
-        message = data['choices'][0]['message']
-        content = message.get('content', '').strip()
-        if content.startswith("```"):
-            lines = content.splitlines()
-            if len(lines) >= 2:
-                content = "\n".join(lines[1:-1]).strip()
-            else:
-                content = content.replace("```", "").strip()
-        return content, False
-    except (KeyError, IndexError, TypeError) as e:
-        return f"Error parsing JSON response: {str(e)}", True
+        with open(file_path, "r", encoding="utf-8") as f:
+            return f.read(), False
+    except Exception as e:
+        return f"Error reading file: {str(e)}", True
 
 def load_ignore_patterns(dir_path: str):
     global cog_cfg  # <--- CRITICAL FIX: Access the global path resolved in main()
